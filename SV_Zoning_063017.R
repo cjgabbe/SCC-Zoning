@@ -149,30 +149,98 @@ ElemSchools.proj@data <- ElemSchools.dat
 ### CENSUS/ACS TABULAR DATA
 
 # Download Census tract variables
-acs.lookup(2015, span = 5, dataset ="acs", table.name="Median Household Income") # Find table number by name
-
-SCCtracts_income <- acs.fetch(2015, span = 5, geography=geo.make(state="CA", county="Santa Clara", tract="*"), 
+# Median household income
+acs.lookup(2009, span = 5, dataset ="acs", table.name="Median Household Income") # Find table number by name, I found it easier to look in American Fact Finder
+SCCtracts_Income_09 <- acs.fetch(2009, span = 5, geography=geo.make(state="CA", county="Santa Clara", tract="*"), 
                               table.number="B19013", dataset = "acs",
-                              key="05ea9b3ab3618d0c1d21a2d2b93c3ba0e3b7e380", col.names = "pretty") # Download Census data
-
+                              key="", col.names = "pretty") # Download Census data
 #Resolve acs.fetch triming zeros. 
-SCCtracts_income@geography$state[nchar(SCCtracts_income@geography$state) == 1]  <- paste0(0, SCCtracts_income@geography$state)
-SCCtracts_income@geography$county[nchar(SCCtracts_income@geography$county) == 2]  <- paste0(0, SCCtracts_income@geography$county)
-SCCtracts_income.df <- data.frame(paste0(as.character(SCCtracts_income@geography$state), 
-                                         as.character(SCCtracts_income@geography$county), 
-                                         SCCtracts_income@geography$tract), 
-                                  SCCtracts_income@estimate)
+SCCtracts_Income_09@geography$state[nchar(SCCtracts_Income_09@geography$state) == 1]  <- paste0(0, SCCtracts_Income_09@geography$state)
+SCCtracts_Income_09@geography$county[nchar(SCCtracts_Income_09@geography$county) == 2]  <- paste0(0, SCCtracts_Income_09@geography$county)
+SCCtracts_Income_09.df <- data.frame(paste0(as.character(SCCtracts_Income_09@geography$state), 
+                                            as.character(SCCtracts_Income_09@geography$county), 
+                                            SCCtracts_Income_09@geography$tract), 
+                                     SCCtracts_Income_09@estimate)
+colnames(SCCtracts_Income_09.df) <- c("GEOID_TR", "HH_Income_09")
+# Do I need to do this for each ACS table? How do I know what the columns are??
 
+# Tenure
+acs.lookup(2009, span = 5, dataset ="acs", table.number="B25003") # Find table number by number
+SCCtracts_Tenure_09 <- acs.fetch(2009, span = 5, geography=geo.make(state="CA", county="Santa Clara", tract="*"), 
+                              table.number="B25003", dataset = "acs",
+                              key="", col.names = "pretty") # Download Census data
 
-colnames(income_df) <- c("GEOID", "hhincome")
+SCCtracts_Tenure_09@geography$state[nchar(SCCtracts_Tenure_09@geography$state) == 1]  <- paste0(0, SCCtracts_Tenure_09@geography$state)
+SCCtracts_Tenure_09@geography$county[nchar(SCCtracts_Tenure_09@geography$county) == 2]  <- paste0(0, SCCtracts_Tenure_09@geography$county)
+SCCtracts_Tenure_09.df <- data.frame(paste0(as.character(SCCtracts_Tenure_09@geography$state), 
+                                            as.character(SCCtracts_Tenure_09@geography$county), 
+                                            SCCtracts_Tenure_09@geography$tract), 
+                                     SCCtracts_Tenure_09@estimate)
+colnames(SCCtracts_Tenure_09.df) <- c("GEOID_TR", "TotalHH_09", "OwnerHH_09", "RenterHH_09")
+SCCtracts_Tenure_09.df$Pct_Owner_09 <- (SCCtracts_Tenure_09.df$OwnerHH_09/SCCtracts_Tenure_09.df$TotalHH_09)
 
+# Race
+acs.lookup(2009, span = 5, dataset ="acs", table.number="B02001") # Find table number by number
+SCCtracts_Race_09 <- acs.fetch(2009, span = 5, geography=geo.make(state="CA", county="Santa Clara", tract="*"), 
+                              table.number="B02001", dataset = "acs",
+                              key="", col.names = "pretty") # Download Census data
 
-# Join spatial and tabular data
-SCC_tracts2 <- geo_join(SCCtracts.proj, SCCtracts_income, "GEOID", "geoid")
-sf_tracts2 <- sf_tracts2[!is.na(sf_tracts2$pctpov),]
-# look at the data
-class(sf_tracts2)
-str(sf_tracts2)
-str(sf_tracts2@data)
+SCCtracts_Race_09@geography$state[nchar(SCCtracts_Race_09@geography$state) == 1]  <- paste0(0, SCCtracts_Race_09@geography$state)
+SCCtracts_Race_09@geography$county[nchar(SCCtracts_Race_09@geography$county) == 2]  <- paste0(0, SCCtracts_Race_09@geography$county)
+SCCtracts_Race_09.df <- data.frame(paste0(as.character(SCCtracts_Race_09@geography$state), 
+                                            as.character(SCCtracts_Race_09@geography$county), 
+                                            SCCtracts_Race_09@geography$tract), 
+                                     SCCtracts_Race_09@estimate)
+colnames(SCCtracts_Race_09.df) <- c("GEOID_TR", "Pop_09", "White_09", "Black_09", "AmerInd_09", "Asian_09", "PacIs_09", "Other_09", "TwoMore_09", "TwoMoreExOth_09", "ThreeMore_09")
+SCCtracts_Race_09.df$Pct_White_09 <- (SCCtracts_Race_09.df$White_09/SCCtracts_Race_09.df$Pop_09)
+SCCtracts_Race_09.df$Pct_Black_09 <- (SCCtracts_Race_09.df$Black_09/SCCtracts_Race_09.df$Pop_09)
+SCCtracts_Race_09.df$Pct_Asian_09 <- (SCCtracts_Race_09.df$Asian_09/SCCtracts_Race_09.df$Pop_09)
+
+# Hispanic
+SCCtracts_Hispanic_09 <- acs.fetch(2009, span = 5, geography=geo.make(state="CA", county="Santa Clara", tract="*"), 
+                              table.number="B03003", dataset = "acs",
+                              key="", col.names = "pretty") # Download Census data
+
+SCCtracts_Hispanic_09@geography$state[nchar(SCCtracts_Hispanic_09@geography$state) == 1]  <- paste0(0, SCCtracts_Hispanic_09@geography$state)
+SCCtracts_Hispanic_09@geography$county[nchar(SCCtracts_Hispanic_09@geography$county) == 2]  <- paste0(0, SCCtracts_Hispanic_09@geography$county)
+SCCtracts_Hispanic_09.df <- data.frame(paste0(as.character(SCCtracts_Hispanic_09@geography$state), 
+                                          as.character(SCCtracts_Hispanic_09@geography$county), 
+                                          SCCtracts_Hispanic_09@geography$tract), 
+                                   SCCtracts_Hispanic_09@estimate)
+colnames(SCCtracts_Hispanic_09.df) <- c("GEOID_TR", "Pop_09", "NotHispanic_09", "Hispanic_09")
+SCCtracts_Hispanic_09.df$Pct_Hispanic_09 <- (SCCtracts_Hispanic_09.df$Hispanic_09/SCCtracts_Hispanic_09.df$Pop_09)
+
+# Year structure built
+SCCtracts_YearStructure_09 <- acs.fetch(2009, span = 5, geography=geo.make(state="CA", county="Santa Clara", tract="*"), 
+                              table.number="B25034", dataset = "acs",
+                              key="", col.names = "pretty") # Download Census data
+
+SCCtracts_YearStructure_09@geography$state[nchar(SCCtracts_YearStructure_09@geography$state) == 1]  <- paste0(0, SCCtracts_YearStructure_09@geography$state)
+SCCtracts_YearStructure_09@geography$county[nchar(SCCtracts_YearStructure_09@geography$county) == 2]  <- paste0(0, SCCtracts_YearStructure_09@geography$county)
+SCCtracts_YearStructure_09.df <- data.frame(paste0(as.character(SCCtracts_YearStructure_09@geography$state), 
+                                              as.character(SCCtracts_YearStructure_09@geography$county), 
+                                              SCCtracts_YearStructure_09@geography$tract), 
+                                       SCCtracts_YearStructure_09@estimate)
+colnames(SCCtracts_YearStructure_09.df) <- c("GEOID_TR", "HU_09", "YrBuilt_2005_2009_09", "YrBuilt_2000_2004_09", "YrBuilt_1990_1999_09", "YrBuilt_1980_1989_09", "YrBuilt_1970_1979_09", "YrBuilt_1960_1969_09", "YrBuilt_1950_1959_09", "YrBuilt_1940_1949_09", "YrBuilt_1939_Earlier_09")
+SCCtracts_YearStructure_09.df$NewUnits_09 <- (SCCtracts_YearStructure_09.df$YrBuilt_2000_2004_09 + SCCtracts_YearStructure_09.df$YrBuilt_2005_2009_09) # Define new units as though built 2000-09
+SCCtracts_YearStructure_09.df$Pct_NewUnits_09 <- (SCCtracts_YearStructure_09.df$NewUnits_09/SCCtracts_YearStructure_09.df$HU_09) # Define new units as though built 2000-09
+
+# Merge all of these variables together
+All_ACS_09 <- merge(SCCtracts_Income_09.df, SCCtracts_Tenure_09.df) 
+All_ACS_09 <- merge(All_ACS_09, SCCtracts_Race_09.df) 
+All_ACS_09 <- merge(All_ACS_09, SCCtracts_Hispanic_09.df) 
+All_ACS_09 <- merge(All_ACS_09, SCCtracts_YearStructure_09.df)
+# Keep only the variables I need
+names(All_ACS_09)
+All_ACS_09 <- All_ACS_09 %>%dplyr::select(GEOID_TR, Pop_09, HH_Income_09,TotalHH_09, Pct_Owner_09, Pct_White_09, Pct_Black_09, Pct_Asian_09, Pct_Hispanic_09, HU_09, NewUnits_09, Pct_NewUnits_09)
+
+## NOT SURE WHY THE ABOVE ISN'T WORKING, BUT I THINK IT'S CLOSE
+
+# Clean up 
+remove(SCCtracts_Income_09.df, SCCtracts_Tenure_09.df, SCCtracts_Race_09.df, SCCtracts_Hispanic_09.df, SCCtracts_YearStructure_09.df)
+remove(SCCtracts_Income_09, SCCtracts_Tenure_09, SCCtracts_Race_09, SCCtracts_Hispanic_09, SCCtracts_YearStructure_09)
+
+# Join Census tract boundaries (spatial) with variables (tabular data)
+SCC_tracts2 <- geo_join(SCCtracts.proj, All_ACS_09, "GEOID", "GEOID_TR") # Haven't tried this yet
 
 
