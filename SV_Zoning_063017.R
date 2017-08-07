@@ -619,8 +619,26 @@ ParcelVars_SV <- ParcelVars_SV %>% mutate(RezoneCat = ifelse(NoRezone_Ind==1, as
                                                       ifelse(Downzone_Ind == 1, as.numeric(1),
                                                       ifelse(Upzone_Ind == 1, as.numeric(2),  
                                                       0))))
+
+
   
 save(ParcelVars_SV, file="/Users/charlesgabbe/Dropbox/SV_Zoning_WorkingFiles/Parcels_AllVars_DF.RData")
+
+# Join parcel shapefile with table
+SCCparcels <- readOGR(dsn = "/Users/charlesgabbe/Dropbox/SV_Zoning_WorkingFiles", layer = "09_01_2015_parcels_SCConly_proj")
+SCCparcels <- spTransform(SCCparcels, CRSobj = CSP_Zone3_Proj) # Project to California State Plane
+SCCparcels <- SCCparcels[, -(2:16)] # Remove unnecessary columns
+SCCParcels_SpatialVars <- merge(SCCparcels, ParcelVars_SV, by.x ="PARCEL_ID", by.y = "PARCEL_ID")
+names(SCCParcels_SpatialVars) # Check to make sure the merge worked.
+writeOGR(SCCParcels_SpatialVars, dsn = "/Users/charlesgabbe/Dropbox/SV_Zoning_WorkingFiles", layer = "SCC_Parcels_SpatialVars", driver="ESRI Shapefile", morphToESRI=TRUE)
+remove(SCCparcels)
+
+# Mapping data
+
+# Map entire extent - NOT WORKING YET
+spplot(SCCParcels_SpatialVars, "RezoneCat", main = "Rezonings in Silicon Valley", 
+       col = "transparent")
+# Zoom to each city 
 
 
 # MISC SAVED CODE
