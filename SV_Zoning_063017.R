@@ -42,6 +42,12 @@ library("RQGIS")
 library("gstat")
 library("raster")
 library("gdata")
+library("nnet")
+library("reshape2")
+library("magrittr")
+
+
+
 
 
 # GENERAL DATA PREP
@@ -577,6 +583,7 @@ ParcelVars_SV <- left_join(ParcelVars_SV, T1_Zoning)
 ParcelVars_SV <- left_join(ParcelVars_SV, T1_GP)
 ParcelVars_SV <- left_join(ParcelVars_SV, T2_Zoning)
 ParcelVars_SV <- left_join(ParcelVars_SV, T2_GP)
+ParcelVars_SV <- left_join(ParcelVars_SV, ParcelLotSize)
 
 # Clean up
 remove(SCCparcels.df, All_ACS_09, EPASLD, Dist_Parcel_Rail, ElemAPI13, ElevSlope, Parcels_Join_T1_T2_Zoning, ParcelLotSize)
@@ -619,10 +626,35 @@ ParcelVars_SV <- ParcelVars_SV %>% mutate(RezoneCat = ifelse(NoRezone_Ind==1, as
                                                       ifelse(Downzone_Ind == 1, as.numeric(1),
                                                       ifelse(Upzone_Ind == 1, as.numeric(2),  
                                                       0))))
+ParcelVars_SV$RezoneCat <- factor(ParcelVars_SV$RezoneCat) # Convert RezoneCat to factor
 
-
-  
 save(ParcelVars_SV, file="/Users/charlesgabbe/Dropbox/SV_Zoning_WorkingFiles/Parcels_AllVars_DF.RData")
+
+
+# DESCRIPTIVE STATISTICS
+# Counts and land area
+cities <- group_by(ParcelVars_SV, T1_City, RezoneCat)
+parcelcounts <- dplyr::count(cities) # Count of rezoned parcels
+ungroup(parcelcounts)
+group_by(parcelcounts, T1_City)
+parcelcounts <- parcelcounts %>% dplyr::mutate(sum(n)) # Number of parcels by city
+colnames(parcelcounts) <- c("T1_City", "RezoneCat", "RezonedParcels", "CityTotalParcels")
+
+acres <- dplyr::summarise(cities, RezonedAcres=sum(ACRES)) # Land area of rezoned parcels
+ungroup(acres)
+group_by(acres, T1_City)
+acres <- acres %>% dplyr::mutate(CityTotalAcres=sum(RezonedAcres)) # Total land area by city
+
+SummaryStats <- merge(parcelcounts, acres) # Combine
+SummaryStats <- SummaryStats %>% dplyr::mutate(PctRezonedCityParcels = RezonedParcels/CityTotalParcels) # Calc pct parcels rezoned
+SummaryStats <- SummaryStats %>% dplyr::mutate(PctRezonedCityArea = RezonedAcres/CityTotalAcres) # Calc pct land area rezoned
+remove(cities, parcelcounts, acres) # Clean up
+
+
+# MODELS
+
+
+##### DO THE STEPS BELOW AGAIN ONCE I'VE GOTTEN THE TABLE FINALIZED
 
 # Join parcel shapefile with table
 SCCparcels <- readOGR(dsn = "/Users/charlesgabbe/Dropbox/SV_Zoning_WorkingFiles", layer = "09_01_2015_parcels_SCConly_proj")
