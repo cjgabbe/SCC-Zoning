@@ -47,9 +47,6 @@ library("reshape2")
 library("magrittr")
 
 
-
-
-
 # GENERAL DATA PREP
 
 # Create object for California State Plane Zone III CRS
@@ -628,13 +625,15 @@ ParcelVars_SV <- ParcelVars_SV %>% mutate(RezoneCat = ifelse(NoRezone_Ind==1, as
                                                       0))))
 ParcelVars_SV$RezoneCat <- factor(ParcelVars_SV$RezoneCat) # Convert RezoneCat to factor
 
+# Add 1/2 transit buffer area variable
+ParcelVars_SV <- ParcelVars_SV %>% mutate(HalfMile_Rail = ifelse(RailStation_Ft<=2640, 1, 0))
+ParcelVars_SV$HalfMile_Rail <- factor(ParcelVars_SV$HalfMile_Rail) # Convert to factor
+
 save(ParcelVars_SV, file="/Users/charlesgabbe/Dropbox/SV_Zoning_WorkingFiles/Parcels_AllVars_DF.RData")
 
-# Add 1/2 transit buffer area variable
-ParcelVars_SV <- ParcelVars_SV %>% mutate(HalfMile_Rail = ifelse(T2_City=="San Jose" & T2_ZoneV2 > 0, as.numeric(T2_ZoneV2))
 
 # DESCRIPTIVE STATISTICS
-# Counts and land area
+# Counts and land area by city and rezoning category
 cities <- group_by(ParcelVars_SV, T1_City, RezoneCat)
 parcelcounts <- dplyr::count(cities) # Count of rezoned parcels
 ungroup(parcelcounts)
@@ -654,6 +653,21 @@ remove(cities, parcelcounts, acres) # Clean up
 
 
 # MODELS
+
+# Multinomial model of rezoning
+Model1 <- multinom(RezoneCat ~ API13_IDW + Auto_Jobs45min + Transit_Jobs45min + HalfMile_Rail + Elev_Ft + Slope_Deg + Pct_Owner_09 + ResDen_10 + EmpDen_10 + MaxDensity_T1 + ACRES + T1_City, 
+                   data = ParcelVars_SV)
+summary(Model1)
+z <- summary(Model1)$coefficients/summary(Model1)$standard.errors
+p <- (1 - pnorm(abs(z), 0, 1)) * 2 # 2-tailed z test
+
+# NEED TO REPORT COEFFICIENTS AS RELATIVE RISK RATIOS
+# exp(coef(test))  
+
+# Formatted table
+stargazer(Model1, type="html", 
+          style="qje",
+          out="/Users/charlesgabbe/Google Drive/Research_Projects/Zoning_SiliconValley/Tables/Model1_081017.htm")
 
 
 ##### DO THE STEPS BELOW AGAIN ONCE I'VE GOTTEN THE TABLE FINALIZED
