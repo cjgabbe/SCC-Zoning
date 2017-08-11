@@ -630,6 +630,8 @@ ParcelVars_SV$RezoneCat <- factor(ParcelVars_SV$RezoneCat) # Convert RezoneCat t
 
 save(ParcelVars_SV, file="/Users/charlesgabbe/Dropbox/SV_Zoning_WorkingFiles/Parcels_AllVars_DF.RData")
 
+# Add 1/2 transit buffer area variable
+ParcelVars_SV <- ParcelVars_SV %>% mutate(HalfMile_Rail = ifelse(T2_City=="San Jose" & T2_ZoneV2 > 0, as.numeric(T2_ZoneV2))
 
 # DESCRIPTIVE STATISTICS
 # Counts and land area
@@ -662,6 +664,8 @@ SCCparcels <- spTransform(SCCparcels, CRSobj = CSP_Zone3_Proj) # Project to Cali
 SCCparcels <- SCCparcels[, -(2:16)] # Remove unnecessary columns
 SCCParcels_SpatialVars <- merge(SCCparcels, ParcelVars_SV, by.x ="PARCEL_ID", by.y = "PARCEL_ID")
 names(SCCParcels_SpatialVars) # Check to make sure the merge worked.
+
+### How to write with .prj file? Need projection:
 writeOGR(SCCParcels_SpatialVars, dsn = "/Users/charlesgabbe/Dropbox/SV_Zoning_WorkingFiles", layer = "SCC_Parcels_SpatialVars", driver="ESRI Shapefile", morphToESRI=TRUE)
 remove(SCCparcels)
 
