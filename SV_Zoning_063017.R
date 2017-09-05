@@ -592,24 +592,44 @@ save(ParcelVars_SV, file="/Users/charlesgabbe/Dropbox/SV_Zoning_WorkingFiles/Par
 # If statements for maximum allowable density
 load("/Users/charlesgabbe/Dropbox/SV_Zoning_WorkingFiles/Parcels_AllVars_DF.RData")  # load Parcels_Join_T1_T2_Zoning
 
+### INITIAL STRATEGY [KEEPING FOR REFERENCE, BUT SEE BELOW FOR ACTUAL APPROACH]
 # San Jose: If PD > 0, use PD, if PD = 0, then lower of GP and Zoning densities.
 # Santa Clara: If Zoning = PD or PD-MC, then GP density. If not, use Zoning Density.
 # Sunnyvale: = zoning density
+# ParcelVars_SV <- ParcelVars_SV %>% mutate(MaxDensity_T1 = ifelse(T1_City=="San Jose" & T1_ZoneV2 > 0, as.numeric(T1_ZoneV2),
+#                                                           ifelse(T1_City=="San Jose" & T1_ZoneV2 == 0 & MaxDensity_T1_GP>MaxDensity_T1_ZONING, as.numeric(MaxDensity_T1_ZONING),
+#                                                           ifelse(T1_City=="San Jose" & T1_ZoneV2 == 0 & MaxDensity_T1_GP<=MaxDensity_T1_ZONING, as.numeric(MaxDensity_T1_GP),
+#                                                           ifelse(T1_City=="Santa Clara" & T1_ZoneV1=="PD" | T1_ZoneV1=="PD-MC", as.numeric(MaxDensity_T1_GP),
+#                                                           ifelse(T1_City=="Santa Clara" & T1_ZoneV1!="PD" & T1_ZoneV1!="PD-MC", as.numeric(MaxDensity_T1_ZONING),
+#                                                           ifelse(T1_City=="Sunnyvale", as.numeric(MaxDensity_T1_ZONING),
+#                                                           0)))))))
+# 
+# ParcelVars_SV <- ParcelVars_SV %>% mutate(MaxDensity_T2 = ifelse(T2_City=="San Jose" & T2_ZoneV2 > 0, as.numeric(T2_ZoneV2),
+#                                                           ifelse(T2_City=="San Jose" & T2_ZoneV2 == 0 & MaxDensity_T2_GP>MaxDensity_T2_ZONING, as.numeric(MaxDensity_T2_ZONING),
+#                                                           ifelse(T2_City=="San Jose" & T2_ZoneV2 == 0 & MaxDensity_T2_GP<=MaxDensity_T2_ZONING, as.numeric(MaxDensity_T2_GP),
+#                                                           ifelse(T2_City=="Santa Clara" & T2_ZoneV1=="PD" | T2_ZoneV1=="PD-MC", as.numeric(MaxDensity_T2_GP),
+#                                                           ifelse(T2_City=="Santa Clara" & T2_ZoneV1!="PD" & T2_ZoneV1!="PD-MC", as.numeric(MaxDensity_T2_ZONING),
+#                                                           ifelse(T2_City=="Sunnyvale", as.numeric(MaxDensity_T2_ZONING),
+#                                                           0)))))))
+
+
+### THIS IS THE APPROACH I MOVED TO:
+# San Jose: If PD > 0, use PD, if PD = 0, then Zoning density.
+# Santa Clara: If Zoning = PD or PD-MC, then GP density. If not, use Zoning Density.
+# Sunnyvale: = zoning density
 ParcelVars_SV <- ParcelVars_SV %>% mutate(MaxDensity_T1 = ifelse(T1_City=="San Jose" & T1_ZoneV2 > 0, as.numeric(T1_ZoneV2),
-                                                          ifelse(T1_City=="San Jose" & T1_ZoneV2 == 0 & MaxDensity_T1_GP>MaxDensity_T1_ZONING, as.numeric(MaxDensity_T1_ZONING),
-                                                          ifelse(T1_City=="San Jose" & T1_ZoneV2 == 0 & MaxDensity_T1_GP<=MaxDensity_T1_ZONING, as.numeric(MaxDensity_T1_GP),
-                                                          ifelse(T1_City=="Santa Clara" & T1_ZoneV1=="PD" | T1_ZoneV1=="PD-MC", as.numeric(MaxDensity_T1_GP),
-                                                          ifelse(T1_City=="Santa Clara" & T1_ZoneV1!="PD" & T1_ZoneV1!="PD-MC", as.numeric(MaxDensity_T1_ZONING),
-                                                          ifelse(T1_City=="Sunnyvale", as.numeric(MaxDensity_T1_ZONING),
-                                                          0)))))))
+                                                                 ifelse(T1_City=="San Jose" & T1_ZoneV2 == 0, as.numeric(MaxDensity_T1_ZONING),
+                                                                               ifelse(T1_City=="Santa Clara" & T1_ZoneV1=="PD" | T1_ZoneV1=="PD-MC", as.numeric(MaxDensity_T1_GP),
+                                                                                      ifelse(T1_City=="Santa Clara" & T1_ZoneV1!="PD" & T1_ZoneV1!="PD-MC", as.numeric(MaxDensity_T1_ZONING),
+                                                                                             ifelse(T1_City=="Sunnyvale", as.numeric(MaxDensity_T1_ZONING),
+                                                                                                    0))))))
 
 ParcelVars_SV <- ParcelVars_SV %>% mutate(MaxDensity_T2 = ifelse(T2_City=="San Jose" & T2_ZoneV2 > 0, as.numeric(T2_ZoneV2),
-                                                          ifelse(T2_City=="San Jose" & T2_ZoneV2 == 0 & MaxDensity_T2_GP>MaxDensity_T2_ZONING, as.numeric(MaxDensity_T2_ZONING),
-                                                          ifelse(T2_City=="San Jose" & T2_ZoneV2 == 0 & MaxDensity_T2_GP<=MaxDensity_T2_ZONING, as.numeric(MaxDensity_T2_GP),
-                                                          ifelse(T2_City=="Santa Clara" & T2_ZoneV1=="PD" | T2_ZoneV1=="PD-MC", as.numeric(MaxDensity_T2_GP),
-                                                          ifelse(T2_City=="Santa Clara" & T2_ZoneV1!="PD" & T2_ZoneV1!="PD-MC", as.numeric(MaxDensity_T2_ZONING),
-                                                          ifelse(T2_City=="Sunnyvale", as.numeric(MaxDensity_T2_ZONING),
-                                                          0)))))))
+                                                                 ifelse(T2_City=="San Jose" & T2_ZoneV2 == 0, as.numeric(MaxDensity_T2_ZONING),
+                                                                               ifelse(T2_City=="Santa Clara" & T2_ZoneV1=="PD" | T2_ZoneV1=="PD-MC", as.numeric(MaxDensity_T2_GP),
+                                                                                      ifelse(T2_City=="Santa Clara" & T2_ZoneV1!="PD" & T2_ZoneV1!="PD-MC", as.numeric(MaxDensity_T2_ZONING),
+                                                                                             ifelse(T2_City=="Sunnyvale", as.numeric(MaxDensity_T2_ZONING),
+                                                                                                    0))))))
 
 ParcelVars_SV$ChgDensity_T1_T2 <- (ParcelVars_SV$MaxDensity_T2 - ParcelVars_SV$MaxDensity_T1) 
 ParcelVars_SV <- base::subset(ParcelVars_SV, !(is.na(ChgDensity_T1_T2))) # Dropped observations from other cities and ones not overlapping with one or both zoning shapefiles
@@ -618,10 +638,10 @@ ParcelVars_SV <- base::subset(ParcelVars_SV, !(is.na(ChgDensity_T1_T2))) # Dropp
 ParcelVars_SV$NoRezone_Ind <- as.numeric(ParcelVars_SV$ChgDensity_T1_T2==0)
 ParcelVars_SV$Downzone_Ind <- as.numeric(ParcelVars_SV$ChgDensity_T1_T2<0)  
 ParcelVars_SV$Upzone_Ind <- as.numeric(ParcelVars_SV$ChgDensity_T1_T2>0)
-# Create categorical variables, 0=no change, 1=downzoned, 2=upzoned
-ParcelVars_SV <- ParcelVars_SV %>% mutate(RezoneCat = ifelse(NoRezone_Ind==1, as.numeric(0),
-                                                      ifelse(Downzone_Ind == 1, as.numeric(1),
-                                                      ifelse(Upzone_Ind == 1, as.numeric(2),  
+# Create categorical variables, 1=no change, 2=downzoned, 3=upzoned
+ParcelVars_SV <- ParcelVars_SV %>% mutate(RezoneCat = ifelse(NoRezone_Ind==1, as.numeric(1),
+                                                      ifelse(Downzone_Ind == 1, as.numeric(2),
+                                                      ifelse(Upzone_Ind == 1, as.numeric(3),  
                                                       0))))
 ParcelVars_SV$RezoneCat <- factor(ParcelVars_SV$RezoneCat) # Convert RezoneCat to factor
 
@@ -654,21 +674,20 @@ remove(cities, parcelcounts, acres) # Clean up
 
 # MODELS
 
+# Load main data file
+load(file="/Users/charlesgabbe/Dropbox/SV_Zoning_WorkingFiles/Parcels_AllVars_DF.RData")
+
 # Multinomial model of rezoning
 Model1 <- multinom(RezoneCat ~ API13_IDW + Auto_Jobs45min + Transit_Jobs45min + HalfMile_Rail + Elev_Ft + Slope_Deg + Pct_Owner_09 + ResDen_10 + EmpDen_10 + MaxDensity_T1 + ACRES + T1_City, 
                    data = ParcelVars_SV)
 summary(Model1)
-z <- summary(Model1)$coefficients/summary(Model1)$standard.errors
-p <- (1 - pnorm(abs(z), 0, 1)) * 2 # 2-tailed z test
-
-# NEED TO REPORT COEFFICIENTS AS RELATIVE RISK RATIOS
-# exp(coef(test))  
+Model1.rrr <- exp(coef(Model1)) # Exponentiate coefficients to get relative risk ratios
 
 # Formatted table
-stargazer(Model1, type="html", 
-          style="qje",
+stargazer(Model1, type="text", column.labels = c("Downzoning vs. No Change", "Upzoning vs. No Change"), coef=list(Model1.rrr), p.auto=FALSE,
           out="/Users/charlesgabbe/Google Drive/Research_Projects/Zoning_SiliconValley/Tables/Model1_081017.htm")
 
+remove(SummaryStats, Model1, Model1.rrr)
 
 ##### DO THE STEPS BELOW AGAIN ONCE I'VE GOTTEN THE TABLE FINALIZED
 
