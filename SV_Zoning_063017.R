@@ -207,6 +207,8 @@ EPASLD <- read.dbf("/Users/charlesgabbe/Google Drive/Research_Projects/MobileHom
 # Keep and rename the key variables that I need
 EPASLD = dplyr::select(EPASLD, GEOID_BG = GEOID10, ResDen_10 = D1A, PopDen_10 = D1B, EmpDen_10 = D1C, Auto_Jobs45min = D5ar, Transit_Jobs45min = D5br)
 EPASLD <- EPASLD[grep("^06085", EPASLD$GEOID_BG), ] # Narrow dataset to Santa Clara County only
+EPASLD$Auto_Jobs45min_THOU <- (EPASLD$Auto_Jobs45min/1000) 
+EPASLD$Transit_Jobs45min_THOU <- (EPASLD$Transit_Jobs45min/1000) 
 
 # Save as Rdata file
 save(EPASLD, file="/Users/charlesgabbe/Dropbox/SV_Zoning_WorkingFiles/3_EPASLD_DF.RData")
@@ -590,7 +592,6 @@ remove(T1_Zoning, T1_GP, T2_Zoning, T2_GP)
 save(ParcelVars_SV, file="/Users/charlesgabbe/Dropbox/SV_Zoning_WorkingFiles/Parcels_AllVars_DF.RData")
 
 # If statements for maximum allowable density
-load("/Users/charlesgabbe/Dropbox/SV_Zoning_WorkingFiles/Parcels_AllVars_DF.RData")  # load Parcels_Join_T1_T2_Zoning
 
 ### INITIAL STRATEGY [KEEPING FOR REFERENCE, BUT SEE BELOW FOR ACTUAL APPROACH]
 # San Jose: If PD > 0, use PD, if PD = 0, then lower of GP and Zoning densities.
@@ -645,7 +646,10 @@ ParcelVars_SV <- ParcelVars_SV %>% mutate(RezoneCat = ifelse(NoRezone_Ind==1, as
                                                       0))))
 ParcelVars_SV$RezoneCat <- factor(ParcelVars_SV$RezoneCat) # Convert RezoneCat to factor
 
-# Add 1/2 transit buffer area variable
+# Add transit buffer variables
+ParcelVars_SV <- ParcelVars_SV %>% mutate(QuarterMile_Rail = ifelse(RailStation_Ft<=1320, 1, 0))
+ParcelVars_SV$QuarterMile_Rail <- factor(ParcelVars_SV$QuarterMile_Rail) # Convert to factor
+
 ParcelVars_SV <- ParcelVars_SV %>% mutate(HalfMile_Rail = ifelse(RailStation_Ft<=2640, 1, 0))
 ParcelVars_SV$HalfMile_Rail <- factor(ParcelVars_SV$HalfMile_Rail) # Convert to factor
 
@@ -678,7 +682,7 @@ remove(cities, parcelcounts, acres) # Clean up
 load(file="/Users/charlesgabbe/Dropbox/SV_Zoning_WorkingFiles/Parcels_AllVars_DF.RData")
 
 # Multinomial model of rezoning
-Model1 <- multinom(RezoneCat ~ API13_IDW + Auto_Jobs45min + Transit_Jobs45min + HalfMile_Rail + Elev_Ft + Slope_Deg + Pct_Owner_09 + ResDen_10 + EmpDen_10 + MaxDensity_T1 + ACRES + T1_City, 
+Model1 <- multinom(RezoneCat ~ API13_IDW + Auto_Jobs45min_THOU + Transit_Jobs45min_THOU + HalfMile_Rail + Elev_Ft + Slope_Deg + Pct_Owner_09 + ResDen_10 + EmpDen_10 + MaxDensity_T1 + ACRES + T1_City, 
                    data = ParcelVars_SV)
 summary(Model1)
 Model1.rrr <- exp(coef(Model1)) # Exponentiate coefficients to get relative risk ratios
