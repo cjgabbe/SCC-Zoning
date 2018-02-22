@@ -45,6 +45,8 @@ library("gdata")
 library("nnet")
 library("reshape2")
 library("magrittr")
+library("mlogit")
+library("clusterSEs")
 
 
 # GENERAL DATA PREP
@@ -613,6 +615,7 @@ save(ParcelVars_SV, file="/Users/charlesgabbe/Dropbox/SV_Zoning_WorkingFiles/Par
 #                                                           ifelse(T2_City=="Sunnyvale", as.numeric(MaxDensity_T2_ZONING),
 #                                                           0)))))))
 
+######## NEED TO UPDATE THE APPROACH BELOW #######################
 
 ### THIS IS THE APPROACH I MOVED TO:
 # San Jose: If PD > 0, use PD, if PD = 0, then Zoning density.
@@ -632,6 +635,26 @@ ParcelVars_SV <- ParcelVars_SV %>% mutate(MaxDensity_T2 = ifelse(T2_City=="San J
                                                                                              ifelse(T2_City=="Sunnyvale", as.numeric(MaxDensity_T2_ZONING),
                                                                                                     0))))))
 
+#Convert T2_ZoneV1 from factor to character
+ParcelVars_SV$T2_ZoneV1 <- as.character(ParcelVars_SV$T2_ZoneV1)
+
+# Manual revisions to parcel data values (WORKING WITH TEST DATASET FOR NOW)
+ParcelVars_TEST <- ParcelVars_SV
+
+# Santa Clara
+ParcelVars_TEST[ParcelVars_TEST$PARCEL_ID == "1412789", c('T1_ZoneV1')] <- "A"
+ParcelVars_TEST[ParcelVars_TEST$PARCEL_ID == "1412789", c('T1_ZoneV3')] <- "B"
+ParcelVars_TEST[ParcelVars_TEST$PARCEL_ID == "1412789", c('T2_ZoneV1')] <- "C"
+ParcelVars_TEST[ParcelVars_TEST$PARCEL_ID == "1412789", c('T2_ZoneV3')] <- "D"
+ParcelVars_TEST[ParcelVars_TEST$PARCEL_ID == "1412789", c('MaxDensity_T1_ZONING')] <- 5
+ParcelVars_TEST[ParcelVars_TEST$PARCEL_ID == "1412789", c('MaxDensity_T1_GP')] <- 10
+ParcelVars_TEST[ParcelVars_TEST$PARCEL_ID == "1412789", c('MaxDensity_T2_ZONING')] <- 10
+ParcelVars_TEST[ParcelVars_TEST$PARCEL_ID == "1412789", c('MaxDensity_T2_GP')] <- 20
+
+
+ParcelVars_TEST <- ParcelVars_SV
+
+# Calculate change in allowable density
 ParcelVars_SV$ChgDensity_T1_T2 <- (ParcelVars_SV$MaxDensity_T2 - ParcelVars_SV$MaxDensity_T1) 
 ParcelVars_SV <- base::subset(ParcelVars_SV, !(is.na(ChgDensity_T1_T2))) # Dropped observations from other cities and ones not overlapping with one or both zoning shapefiles
 
@@ -653,10 +676,11 @@ ParcelVars_SV$QuarterMile_Rail <- factor(ParcelVars_SV$QuarterMile_Rail) # Conve
 ParcelVars_SV <- ParcelVars_SV %>% mutate(HalfMile_Rail = ifelse(RailStation_Ft<=2640, 1, 0))
 ParcelVars_SV$HalfMile_Rail <- factor(ParcelVars_SV$HalfMile_Rail) # Convert to factor
 
+# Create new string variable for quickly looking through the types of zoning changes 
+ParcelVars_SV$ZoneT1_T2_Str <- paste(ParcelVars_SV$T1_ZoneV1, ParcelVars_SV$T2_ZoneV1, sep = ", ")
+
 save(ParcelVars_SV, file="/Users/charlesgabbe/Dropbox/SV_Zoning_WorkingFiles/Parcels_AllVars_DF.RData")
 
-
-# DESCRIPTIVE STATISTICS
 # Counts and land area by city and rezoning category
 cities <- group_by(ParcelVars_SV, T1_City, RezoneCat)
 parcelcounts <- dplyr::count(cities) # Count of rezoned parcels
@@ -675,6 +699,7 @@ SummaryStats <- SummaryStats %>% dplyr::mutate(PctRezonedCityParcels = RezonedPa
 SummaryStats <- SummaryStats %>% dplyr::mutate(PctRezonedCityArea = RezonedAcres/CityTotalAcres) # Calc pct land area rezoned
 remove(cities, parcelcounts, acres) # Clean up
 
+write.csv(SummaryStats, "/Users/charlesgabbe/Google Drive/Research_Projects/Zoning_SiliconValley/Tables/DescriptiveSummary.csv")
 
 # MODELS
 
@@ -682,16 +707,27 @@ remove(cities, parcelcounts, acres) # Clean up
 load(file="/Users/charlesgabbe/Dropbox/SV_Zoning_WorkingFiles/Parcels_AllVars_DF.RData")
 
 # Multinomial model of rezoning
-Model1 <- multinom(RezoneCat ~ API13_IDW + Auto_Jobs45min_THOU + Transit_Jobs45min_THOU + HalfMile_Rail + Elev_Ft + Slope_Deg + Pct_Owner_09 + ResDen_10 + EmpDen_10 + MaxDensity_T1 + ACRES + T1_City, 
+Model1 <- multinom(RezoneCat ~ API13_IDW + Auto_Jobs45min_THOU + Transit_Jobs45min_THOU + HalfMile_Rail + Elev_Ft + Slope_Deg + Pct_Owner_09 + ResDen_10 + EmpDen_10 + NewUnits_09 + MaxDensity_T1 + ACRES + T1_City, 
                    data = ParcelVars_SV)
 summary(Model1)
 Model1.rrr <- exp(coef(Model1)) # Exponentiate coefficients to get relative risk ratios
 
+# Diagnostics (see https://stats.idre.ucla.edu/r/dae/multinomial-logistic-regression/)
+z <- summary(Model1)$coefficients/summary(Model1)$standard.errors
+p <- (1 - pnorm(abs(z), 0, 1)) * 2
+head(pp <- fitted(Model1))
+remove(z, p)
+
 # Formatted table
-stargazer(Model1, type="text", column.labels = c("Downzoning vs. No Change", "Upzoning vs. No Change"), coef=list(Model1.rrr), p.auto=FALSE,
-          out="/Users/charlesgabbe/Google Drive/Research_Projects/Zoning_SiliconValley/Tables/Model1_081017.htm")
+stargazer(Model1, type="text", column.labels = c("Downzoning vs. No Change", "Upzoning vs. No Change"), coef=list(Model1.rrr), p.auto=FALSE, star.cutoffs = c(0.05, 0.01, 0.001),
+          out="/Users/charlesgabbe/Google Drive/Research_Projects/Zoning_SiliconValley/Tables/Model1_091417.htm")
+
+
 
 remove(SummaryStats, Model1, Model1.rrr)
+
+# Export data to Stata for test
+write.dta(ParcelVars_SV, file = "/Users/charlesgabbe/Google Drive/Research_Projects/Zoning_SiliconValley/Data/CombinedData/ParcelVars_SV_090717.dta")
 
 ##### DO THE STEPS BELOW AGAIN ONCE I'VE GOTTEN THE TABLE FINALIZED
 
@@ -702,7 +738,7 @@ SCCparcels <- SCCparcels[, -(2:16)] # Remove unnecessary columns
 SCCParcels_SpatialVars <- merge(SCCparcels, ParcelVars_SV, by.x ="PARCEL_ID", by.y = "PARCEL_ID")
 names(SCCParcels_SpatialVars) # Check to make sure the merge worked.
 
-### How to write with .prj file? Need projection:
+# Write shapefile
 writeOGR(SCCParcels_SpatialVars, dsn = "/Users/charlesgabbe/Dropbox/SV_Zoning_WorkingFiles", layer = "SCC_Parcels_SpatialVars", driver="ESRI Shapefile", morphToESRI=TRUE)
 remove(SCCparcels)
 
@@ -718,3 +754,10 @@ spplot(SCCParcels_SpatialVars, "RezoneCat", main = "Rezonings in Silicon Valley"
 
 # Join Census tract boundaries (spatial) with variables (tabular data)
 SCC_tracts_ACS09 <- geo_join(SCCtracts, All_ACS_09, "GEOID", "GEOID_TR")
+
+# Code for searching QGIS algorithms
+find_algorithms(search_term = "location", name_only = FALSE,
+                qgis_env = set_env())
+get_usage(alg = "qgis:joinattributesbylocation", intern = FALSE, qgis_env = set_env())
+get_args_man(alg = "qgis:joinattributesbylocation", options = TRUE)
+get_options(alg = "qgis:joinattributesbylocation", intern = FALSE)
